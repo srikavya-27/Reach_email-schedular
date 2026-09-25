@@ -1,16 +1,24 @@
 import { useState } from 'react';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/Button';
-import { ArrowLeft, Shield, Zap, Loader2 } from 'lucide-react';
+import { ArrowLeft, Shield, Zap, Loader2, Mail, Lock, UserPlus, LogIn } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface LoginPageProps {
   onNavigate: (page: 'landing' | 'login' | 'dashboard') => void;
 }
 
+type Mode = 'login' | 'signup';
+
 export function LoginPage({ onNavigate }: LoginPageProps) {
+  const [mode, setMode] = useState<Mode>('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -23,6 +31,54 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
       setError(oauthError.message);
       setLoading(false);
     }
+  };
+
+  const handleEmailLogin = async () => {
+    setLoading(true);
+    setError(null);
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+    }
+  };
+
+  const handleSignUp = async () => {
+    setError(null);
+    setSuccess(null);
+
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setLoading(true);
+    const { error: signUpError } = await supabase.auth.signUp({ email, password });
+    setLoading(false);
+
+    if (signUpError) {
+      setError(signUpError.message);
+      return;
+    }
+
+    setSuccess('Account created successfully. Please log in with your credentials.');
+    setMode('login');
+    setPassword('');
+    setConfirmPassword('');
+  };
+
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setError(null);
+    setSuccess(null);
   };
 
   return (
@@ -44,9 +100,13 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
         <div className="glass rounded-2xl p-8 shadow-2xl shadow-black/40">
           <div className="flex flex-col items-center text-center">
             <Logo size={48} className="animate-fade-in" />
-            <h1 className="mt-6 text-2xl font-bold text-white">Welcome to MailFlow</h1>
+            <h1 className="mt-6 text-2xl font-bold text-white">
+              {mode === 'login' ? 'Welcome to MailFlow' : 'Create your account'}
+            </h1>
             <p className="mt-2 text-sm text-slate-400">
-              Sign in to manage your scheduled campaigns and live send queue.
+              {mode === 'login'
+                ? 'Sign in to manage your scheduled campaigns and live send queue.'
+                : 'Set up an email and password to get started.'}
             </p>
           </div>
 
@@ -55,7 +115,13 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
               {error}
             </div>
           )}
+          {success && (
+            <div className="mt-5 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+              {success}
+            </div>
+          )}
 
+          {/* Google OAuth */}
           <div className="mt-8">
             <Button
               variant="google"
@@ -73,11 +139,89 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             </Button>
           </div>
 
+          {/* Divider */}
           <div className="mt-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-white/[0.06]" />
-            <span className="text-xs text-slate-600">Secure OAuth</span>
+            <span className="text-xs text-slate-600">
+              {mode === 'login' ? 'or sign in with email' : 'or sign up with email'}
+            </span>
             <div className="h-px flex-1 bg-white/[0.06]" />
           </div>
+
+          {/* Email / password form */}
+          <div className="mt-6 space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-400">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-3 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-violet-500/40 focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                Password {mode === 'signup' && <span className="text-slate-600">(min 6 characters)</span>}
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={mode === 'signup' ? 'At least 6 characters' : 'Your password'}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-3 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-violet-500/40 focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all"
+                />
+              </div>
+            </div>
+
+            {mode === 'signup' && (
+              <div className="animate-fade-in">
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">Confirm password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-3 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-violet-500/40 focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all"
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={mode === 'login' ? handleEmailLogin : handleSignUp}
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : mode === 'login' ? (
+                <><LogIn className="h-4 w-4" /> Sign in</>
+              ) : (
+                <><UserPlus className="h-4 w-4" /> Create account</>
+              )}
+            </Button>
+          </div>
+
+          {/* Toggle login / signup */}
+          <p className="mt-6 text-center text-sm text-slate-400">
+            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+            <button
+              onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
+              className="font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+            >
+              {mode === 'login' ? 'Create one' : 'Sign in'}
+            </button>
+          </p>
 
           <div className="mt-6 flex items-center justify-center gap-6 text-xs text-slate-500">
             <span className="flex items-center gap-1.5">
@@ -86,7 +230,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             </span>
             <span className="flex items-center gap-1.5">
               <Zap className="h-3.5 w-3.5" />
-              No password needed
+              No credit card needed
             </span>
           </div>
         </div>

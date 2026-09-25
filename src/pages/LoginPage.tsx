@@ -1,12 +1,30 @@
+import { useState } from 'react';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/Button';
-import { ArrowLeft, Shield, Zap } from 'lucide-react';
+import { ArrowLeft, Shield, Zap, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface LoginPageProps {
   onNavigate: (page: 'landing' | 'login' | 'dashboard') => void;
 }
 
 export function LoginPage({ onNavigate }: LoginPageProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (oauthError) {
+      setError(oauthError.message);
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center px-5 py-12">
       <div className="absolute inset-0 -z-10">
@@ -32,15 +50,26 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             </p>
           </div>
 
+          {error && (
+            <div className="mt-5 rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+              {error}
+            </div>
+          )}
+
           <div className="mt-8">
             <Button
               variant="google"
               size="lg"
               className="w-full"
-              onClick={() => onNavigate('dashboard')}
+              onClick={handleGoogleLogin}
+              disabled={loading}
             >
-              <GoogleIcon />
-              Continue with Google
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              {loading ? 'Redirecting…' : 'Continue with Google'}
             </Button>
           </div>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { Sidebar, TopBar, type DashboardView } from '@/components/dashboard/Sidebar';
 import { StatsGrid } from '@/components/dashboard/StatsGrid';
 import { EmailTable } from '@/components/dashboard/EmailTable';
@@ -8,6 +9,7 @@ import { MOCK_STATS, MOCK_EMAILS } from '@/mockData';
 import type { EmailItem, ToastMessage } from '@/types';
 
 interface DashboardPageProps {
+  session: Session;
   onLogout: () => void;
 }
 
@@ -19,7 +21,7 @@ const VIEW_TITLES: Record<DashboardView, string> = {
   settings: 'Settings',
 };
 
-export function DashboardPage({ onLogout }: DashboardPageProps) {
+export function DashboardPage({ session, onLogout }: DashboardPageProps) {
   const [view, setView] = useState<DashboardView>('dashboard');
   const [loading, setLoading] = useState(true);
   const [emails, setEmails] = useState<EmailItem[]>([]);
@@ -29,8 +31,10 @@ export function DashboardPage({ onLogout }: DashboardPageProps) {
   const [slackConnected, setSlackConnected] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const userName = 'Jordan Reyes';
-  const userInitials = 'JR';
+  const userEmail = session.user.email ?? 'user@mailflow.io';
+  const userMeta = session.user.user_metadata as { full_name?: string; name?: string; avatar_url?: string } | null;
+  const userName = userMeta?.full_name || userMeta?.name || userEmail.split('@')[0];
+  const userInitials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   // Simulate loading
   useEffect(() => {
